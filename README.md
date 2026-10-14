@@ -1,77 +1,87 @@
 # BÁO CÁO THỰC HÀNH KIỂM THỬ HIỆU NĂNG BẰNG APACHE JMETER
 
-## 1. Thông tin chung & Môi trường thử nghiệm
+---
+
+## I. Môi trường & Kịch bản kiểm thử (Test Scenario)
+
+### 1. Mục tiêu kiểm thử
+- **Đánh giá năng lực xử lý**: Kiểm tra khả năng chịu tải và độ ổn định của máy chủ Web khi tiếp nhận đồng thời nhiều yêu cầu cùng lúc.
+- **Thu thập chỉ số hiệu năng cơ bản**: Đo lường thời gian phản hồi (Response Time), tỷ lệ thất bại (Error Rate), thông lượng xử lý (Throughput) và dung lượng truyền tải băng thông.
+- **Đánh giá chất lượng dịch vụ (QoS)**: Xác định xem máy chủ có duy trì trải nghiệm mượt mà cho người dùng dưới mức tải mô phỏng hay không.
+
+### 2. Môi trường & Đối tượng thử nghiệm
 - **Công cụ kiểm thử**: Apache JMeter (Phiên bản 5.6.3)
-- **Mục tiêu**: Mô phỏng tải người dùng truy cập API để đánh giá khả năng xử lý, thời gian phản hồi và độ ổn định của máy chủ.
-- **Đối tượng kiểm thử (Target Server)**:
-  - **Protocol**: `https`
-  - **Server Name**: `reqres.in`
-  - **HTTP Method**: `GET`
-  - **Path**: `/api/users?page=2`
+- **Giao thức**: HTTPS | **Phương thức HTTP**: `GET`
+- **Địa chỉ máy chủ (Target Host)**: `www.google.com` | **Đường dẫn (Path)**: `/`
+
+### 3. Cấu hình kịch bản giả lập tải (Thread Group)
+- **Number of Threads (Users)**: `20`
+- **Ramp-Up Period (seconds)**: `5` 
+- **Loop Count**: `5` 
+- **Total Requests (Tổng số mẫu)**: $20 \text{ threads} \times 5 \text{ loops} = 100 \text{ requests}$.
 
 ---
 
-## 2. Kịch bản kiểm thử (Test Plan Scenario)
-Cấu hình nhóm người dùng (**Thread Group**) giả lập tải như sau:
-- **Number of Threads (Users)**: `5` (Mô phỏng 5 người dùng đồng thời).
-- **Ramp-up period (seconds)**: `5` (Tất cả 5 users sẽ khởi tạo lần lượt trong vòng 5 giây).
-- **Loop Count**: `2` (Mỗi user thực hiện lại kịch bản 2 lần).
-- **Tổng số lượng Yêu cầu (Total Requests)**: 5 users x 2 loops = 10 requests.
+## II. Báo cáo & Phân tích Kết quả Chi tiết
+
+### 1. Bảng tổng hợp chỉ số hiệu năng (Aggregate Report)
+
+Dữ liệu đo lường trích xuất trực tiếp từ bộ lắng nghe **Aggregate Report** trên Apache JMeter:
+
+| Metric (Chỉ số) | Giá trị (Value) | Đơn vị | Giải thích & Phân tích Chuyên môn |
+| :--- | :---: | :---: | :--- |
+| **Total Requests (# Samples)** | **100** | req | Tổng số lượt yêu cầu đã được khởi tạo và gửi tới máy chủ. |
+| **Successful Requests** | **100** | req | Số lượng yêu cầu phản hồi hợp lệ (Mã trạng thái HTTP Status 200 OK). |
+| **Failed Requests** | **0** | req | Số lượng yêu cầu bị hủy, quá thời gian (Timeout) hoặc trả về lỗi HTTP 4xx/5xx. |
+| **Error Rate** | **0.00%** | % | Tỷ lệ lỗi phát sinh trong toàn bộ quá trình thực thi kịch bản (Đạt tuyệt đối). |
+| **Average Response Time** | **112** | ms | Thời gian phản hồi trung bình tính trên toàn bộ 100 requests. |
+| **Median (Trung vị 50%)** | **90** | ms | 50% số lượng request nhận kết quả phản hồi trong thời gian từ 90 ms trở xuống. |
+| **90th Percentile (90% Line)** | **193** | ms | 90% số lượng request nhận kết quả phản hồi trong thời gian từ 193 ms trở xuống. |
+| **95th Percentile (95% Line)** | **204** | ms | 95% số lượng request nhận kết quả phản hồi trong thời gian từ 204 ms trở xuống. |
+| **99th Percentile (99% Line)** | **224** | ms | 99% số lượng request nhận kết quả phản hồi trong thời gian từ 224 ms trở xuống. |
+| **Min Response Time** | **70** | ms | Thời gian phản hồi nhanh nhất thu nhận được từ máy chủ. |
+| **Max Response Time** | **337** | ms | Thời gian phản hồi chậm nhất ghi nhận được từ máy chủ. |
+| **Throughput (Thông lượng)** | **18.8** | req/sec | Số lượng yêu cầu máy chủ tiếp nhận và xử lý thành công trung bình trong 1 giây. |
+| **Received Bandwidth** | **1622.87** | KB/sec | Tốc độ truyền dữ liệu nhận về từ máy chủ trung bình mỗi giây. |
+| **Sent Bandwidth** | **2.13** | KB/sec | Tốc độ truyền dữ liệu đẩy lên từ máy khách trung bình mỗi giây. |
 
 ---
 
-## 3. Các bước triển khai trên JMeter
-1. **Tạo Thread Group**: Nhấp chuột phải vào `Test Plan` -> `Add` -> `Threads (Users)` -> `Thread Group` và thiết lập các thông số về tải.
-2. **Cấu hình Sampler**: Nhấp chuột phải vào `Thread Group` -> `Add` -> `Sampler` -> `HTTP Request` để điền địa chỉ Server, phương thức `GET` và đường dẫn API.
-3. **Thêm các Bộ lắng nghe (Listeners)**:
-   - `View Results Tree`: Theo dõi tình trạng phản hồi chi tiết của từng yêu cầu.
-   - `Summary Report`: Thống kê đo lường các chỉ số hiệu năng tổng hợp (Response Time, Error %, Throughput).
-4. **Thực thi và lưu kết quả**: Bấm `Run` để gửi tải và xuất các chỉ số đo lường.
+### 2. Phân tích Chi tiết Kết quả Kiểm tra
+
+1. **Về Độ tin cậy & Tỷ lệ Thành công (Reliability)**:
+   - Tỷ lệ lỗi đạt **0.00%** ($100/100$ requests thành công).
+   - Toàn bộ các yêu cầu đều phản hồi với mã trạng thái `200 OK`. Máy chủ xử lý ổn định, không ghi nhận tình trạng quá tải, nghẽn mạng hay từ chối dịch vụ under load.
+
+2. **Về Thời gian Phản hồi (Response Time Performance)**:
+   - Thời gian phản hồi trung bình cực kỳ ấn tượng (**112 ms**).
+   - Chỉ số **Median (90 ms)** và **90th Percentile (193 ms)** chứng minh phần lớn phản hồi đều nằm dưới ngưỡng chuẩn 200 ms (mức tối ưu cho trải nghiệm người dùng Web tương tác).
+   - Mức chênh lệch giữa Min (70 ms) và Max (337 ms) thấp, cho thấy độ trễ hàng đợi xử lý của máy chủ được duy trì cân bằng tốt.
+
+3. **Về Năng suất Xử lý (Throughput & Bandwidth)**:
+   - Thông lượng đạt **18.8 req/sec**, thể hiện khả năng giải phóng hàng đợi nhanh chóng.
+   - Băng thông nhận về đạt **1622.87 KB/sec** phản ánh hạ tầng mạng và dữ liệu nội dung trang chủ được tối ưu tối đa.
 
 ---
 
-## 4. Báo cáo Kết quả Chi tiết (Detailed Results)
+## III. Hình ảnh Minh họa Kết quả Thực thi
 
-### a) Cấu hình kịch bản gửi HTTP Request
-Gửi request phương thức `GET` tới đường dẫn `/api/users?page=2` thông qua giao thức HTTPS.
-
-<img width="1920" height="1024" alt="Hình 1" src="https://github.com/user-attachments/assets/c89f4865-0483-49eb-bdf3-97429f29e6c0" />
+#### 1. Thread Group & HTTP Request
+<img width="1920" height="1010" alt="1" src="https://github.com/user-attachments/assets/7846a014-7f49-4f99-b8b7-b092456a7a5a" />
 
 
----
+#### 2. Bảng tổng hợp Aggregate Report
+<img width="1920" height="1010" alt="2" src="https://github.com/user-attachments/assets/8c2a1eb4-b5ca-4f70-b84e-b9322a0bc51c" />
 
-### b) Chi tiết thực thi theo từng Request (View Results Tree)
-Toàn bộ 10/10 requests đều hiển thị trạng thái màu xanh (thành công).
-- **HTTP Response Code**: `200 OK` (Máy chủ tiếp nhận và trả về dữ liệu thành công).
-- Không phát sinh lỗi Timeout hay lỗi kết nối từ phía Client/Server.
+#### 3. View Results Tree
+<img width="1920" height="1014" alt="re" src="https://github.com/user-attachments/assets/14adec85-1033-417e-93b9-45c1beee925e" />
 
-<img width="1918" height="1035" alt="Hinh 2" src="https://github.com/user-attachments/assets/4db8d782-e1ef-4d23-a259-0c00e6114a5f" />
-
+#### 4. Bảng dữ liệu chi tiết (.CSV)
+<img width="1266" height="529" alt="Capture" src="https://github.com/user-attachments/assets/7375e8f6-bf63-45b0-aa5e-560ca3875260" />
 
 ---
 
-### c) Bảng thống kê hiệu năng chi tiết (Summary Report)
-Dữ liệu trích xuất trực tiếp từ bảng kết quả chạy thực tế:
+## IV. Kết luận & Đánh giá Tổng quan
 
-| Chỉ số (Metric) | Giá trị đo được | Giải thích ý nghĩa |
-| :--- | :--- | :--- |
-| **# Samples** | `10` | Tổng số lượng request đã gửi đến máy chủ. |
-| **Average Response Time** | `3294 ms` (~3.29 giây) | Thời gian phản hồi trung bình của một request. |
-| **Min Response Time** | `28 ms` | Thời gian phản hồi nhanh nhất thu được. |
-| **Max Response Time** | `8381 ms` (~8.38 giây) | Thời gian phản hồi chậm nhất thu được. |
-| **Std. Dev. (Độ lệch chuẩn)**| `3401.56` | Độ chênh lệch thời gian phản hồi giữa các request. |
-| **Error %** | **`0.00%`** | Tỷ lệ lỗi phát sinh (Tất cả request đều thành công 100%). |
-| **Throughput (Năng suất)** | `1.1 / sec` | Số lượng request máy chủ xử lý được trung bình trong 1 giây. |
-| **Received KB/sec** | `3.93 KB/s` | Băng thông dữ liệu tải về trung bình mỗi giây. |
-| **Sent KB/sec** | `0.14 KB/s` | Băng thông dữ liệu gửi đi trung bình mỗi giây. |
-| **Avg. Bytes** | `3504.0 Bytes` | Kích thước dữ liệu trung bình thu được của một response. |
-
-<img width="1916" height="1031" alt="Hinh 3" src="https://github.com/user-attachments/assets/115396b1-fbf0-4505-96ca-65e6f28118ff" />
-
-
----
-
-## 5. Phân tích & Đánh giá (Conclusion & Evaluation)
-1. **Độ tin cậy (Reliability)**: Kịch bản thử nghiệm đạt tỷ lệ thành công tuyệt đối **100% (Error % = 0.00%)** dưới mức tải 5 users đồng thời.
-2. **Thời gian phản hồi (Response Time)**: Thời gian phản hồi trung bình đạt **3294 ms**.
-3. **Kết luận chung**: Máy chủ đáp ứng tốt kịch bản kiểm thử tải cơ bản, không có request nào bị treo hoặc trả về lỗi HTTP 4xx/5xx.
+- **Kết quả chung**: Kịch bản kiểm thử hiệu năng trên Apache JMeter hoàn thành xuất sắc mục tiêu đề ra.
+- **Đánh giá hệ thống**: Máy chủ `www.google.com` hoạt động rất tốt dưới kịch bản mô phỏng 20 người dùng đồng thời, thời gian phản hồi nhanh, băng thông tối ưu và không phát sinh bất kỳ lỗi nào.
